@@ -8,3 +8,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "Photos"
 include ':app'
+include ':entities'
