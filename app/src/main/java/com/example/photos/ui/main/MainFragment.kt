@@ -1,32 +1,61 @@
 package com.example.photos.ui.main
 
-import androidx.lifecycle.ViewModelProvider
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import com.example.photos.R
+import androidx.fragment.app.viewModels
+import androidx.recyclerview.widget.DividerItemDecoration
+import com.example.photos.navigation.NavigationTarget
+import com.example.photos.databinding.MainFragmentBinding
+import com.example.photos.ui.BaseFragment
+import com.example.photos.utils.observe
+import dagger.hilt.android.AndroidEntryPoint
 
-class MainFragment : Fragment() {
+@AndroidEntryPoint
+class MainFragment : BaseFragment<MainViewModel, MainFragmentBinding>() {
 
-    companion object {
-        fun newInstance() = MainFragment()
+    private lateinit var binding: MainFragmentBinding
+    override val viewModel: MainViewModel by viewModels()
+
+    override fun createBinding(
+        inflater: LayoutInflater,
+        container: ViewGroup?
+    ) = MainFragmentBinding.inflate(inflater, container, false).also {
+        binding = it
     }
 
-    private lateinit var viewModel: MainViewModel
-
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        return inflater.inflate(R.layout.main_fragment, container, false)
+    override fun bind(binding: MainFragmentBinding, savedInstanceState: Bundle?) {
+        super.bind(binding, savedInstanceState)
+        setupUI()
     }
 
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
-        viewModel = ViewModelProvider(this).get(MainViewModel::class.java)
-        // TODO: Use the ViewModel
-    }
+    private fun setupUI() {
+        val decorator = DividerItemDecoration(context, DividerItemDecoration.VERTICAL)
+        val photosAdapter = PhotosAdapter { id ->
+            //navigate to details
+            navigationHandler.navigateTo(NavigationTarget.PhotosDetails(id))
+        }
 
+        binding.rvPhotos.adapter = photosAdapter
+        binding.rvPhotos.addItemDecoration(decorator)
+        viewModel.fetchData()
+        observe(viewModel.photos) {
+            when (it) {
+                is com.example.entities.ApiResult.Error -> {
+                    binding.tvError.text = it.message
+                    binding.tvError.visibility = View.VISIBLE
+                }
+                com.example.entities.ApiResult.Loading -> {
+                    binding.tvError.visibility = View.GONE
+                    binding.pbLoading.visibility = View.VISIBLE
+                }
+                is com.example.entities.ApiResult.Success -> {
+                    binding.tvError.visibility = View.GONE
+                    binding.pbLoading.visibility = View.GONE
+                    photosAdapter.submitList(it.data)
+                }
+            }
+        }
+    }
 }
